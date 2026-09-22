@@ -1,0 +1,42 @@
+## .NET and C# ignores
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+appsettings.Development.json
+appsettings.Production.json
+
+## Node & Frontend ignores
+node_modules/
+dist/
+dist-ssr/
+build/
+.vite/
+*.local
+.npm
+.yarn/cache
+.yarn/unplugged
+.pnp.*
+
+## Environment variables & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+## IDE & OS ignores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
