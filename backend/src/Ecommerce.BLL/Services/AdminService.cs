@@ -375,7 +375,10 @@ namespace Ecommerce.BLL.Services
 
             if (order == null) return null;
 
-            order.OrderStatus = dto.OrderStatus.Trim();
+            var previousStatus = order.OrderStatus;
+            var newStatus = dto.OrderStatus.Trim();
+
+            order.OrderStatus = newStatus;
 
             if (!string.IsNullOrWhiteSpace(dto.PaymentStatus))
             {
@@ -393,10 +396,54 @@ namespace Ecommerce.BLL.Services
                 order.Notes = (string.IsNullOrWhiteSpace(order.Notes) ? "" : order.Notes + " | ") + dto.AdminNote;
             }
 
-            // If order completed and was COD, mark as paid
-            if (order.OrderStatus == "Giao hàng thành công" && order.PaymentStatus != "Đã thanh toán")
+            // 1. If order was NOT cancelled and is now CANCELLED: Restore stock to inventory
+            if (previousStatus != "Đã hủy" && newStatus == "Đã hủy")
             {
-                order.PaymentStatus = "Đã thanh toán";
+                foreach (var item in order.Items)
+                {
+                    var variant = await _unitOfWork.ProductVariants.GetByIdAsync(item.ProductVariantId);
+                    if (variant != null)
+                    {
+                        variant.StockQuantity += item.Quantity;
+                        _unitOfWork.ProductVariants.Update(variant);
+
+                        await _unitOfWork.InventoryLogs.AddAsync(new InventoryLog
+                        {
+                            ProductId = variant.ProductId,
+                            ProductVariantId = variant.Id,
+                            Type = "ADJUST",
+                            Quantity = item.Quantity,
+                            UnitPrice = item.UnitPrice,
+                            SupplierOrDestination = "Khách hủy đơn",
+                            Note = $"Hoàn tồn kho từ đơn hàng bị hủy #{order.OrderCode}",
+                            CreatedBy = "Hệ thống Quản trị",
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+            }
+
+            // 2. If order completed: Mark as paid and award Smember reward points
+            if (previousStatus != "Giao hàng thành công" && newStatus == "Giao hàng thành công")
+            {
+                if (order.PaymentStatus != "Đã thanh toán")
+                {
+                    order.PaymentStatus = "Đã thanh toán";
+                }
+
+                if (order.UserId.HasValue)
+                {
+                    var customer = await _unitOfWork.Users.GetByIdAsync(order.UserId.Value);
+                    if (customer != null)
+                    {
+                        var points = (int)(order.TotalAmount / 100000m); // 1 điểm cho mỗi 100k
+                        if (points > 0)
+                        {
+                            customer.RewardPoints += points;
+                            _unitOfWork.Users.Update(customer);
+                        }
+                    }
+                }
             }
 
             _unitOfWork.Orders.Update(order);

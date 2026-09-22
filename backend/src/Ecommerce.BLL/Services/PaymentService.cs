@@ -346,6 +346,11 @@ namespace Ecommerce.BLL.Services
                 throw new KeyNotFoundException($"Không tìm thấy đơn hàng với mã '{request.OrderCode}'.");
             }
 
+            if (request.Amount.HasValue && request.Amount.Value < order.TotalAmount)
+            {
+                throw new InvalidOperationException($"Số tiền thanh toán ({request.Amount.Value:N0} đ) không đủ so với tổng giá trị đơn hàng ({order.TotalAmount:N0} đ).");
+            }
+
             var transactionCode = $"TXN-BANK-{DateTime.UtcNow:yyMMddHHmmss}-{request.BankTransactionId ?? Guid.NewGuid().ToString("N")[..6].ToUpper()}";
 
             var payment = order.Payments.FirstOrDefault(p => p.PaymentMethod == AppConstants.PaymentMethod.QRCode && p.Status == AppConstants.TransactionStatus.Pending);

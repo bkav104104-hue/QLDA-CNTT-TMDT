@@ -70,28 +70,31 @@ namespace Ecommerce.BLL.Services
                         .Include(pv => pv.Product)
                         .FirstOrDefaultAsync(pv => pv.Id == itemReq.ProductVariantId && pv.IsActive);
 
-                    if (variant == null || variant.Product == null || !variant.Product.IsActive)
+                    if (variant == null && !string.IsNullOrWhiteSpace(itemReq.ProductName))
                     {
-                        // Fallback to first available active variant if ID not found
+                        var trimmedName = itemReq.ProductName.Trim().ToLower();
                         variant = await _unitOfWork.ProductVariants.Query()
                             .Include(pv => pv.Product)
-                            .FirstOrDefaultAsync(pv => pv.IsActive);
+                            .FirstOrDefaultAsync(pv => pv.IsActive && pv.Product != null && pv.Product.Name.ToLower().Contains(trimmedName));
                     }
 
-                    if (variant == null || variant.Product == null)
+                    if (variant == null || variant.Product == null || !variant.Product.IsActive)
                     {
-                        throw new InvalidOperationException($"Không tìm thấy sản phẩm hợp lệ trong hệ thống.");
+                        throw new InvalidOperationException($"Sản phẩm '{itemReq.ProductName ?? "được chọn"}' không tồn tại hoặc đã ngừng kinh doanh trên hệ thống.");
                     }
 
-                    if (variant.StockQuantity >= itemReq.Quantity)
+                    // Enforce stock availability: Prevent overselling
+                    if (variant.StockQuantity < itemReq.Quantity)
                     {
-                        variant.StockQuantity -= itemReq.Quantity;
-                        _unitOfWork.ProductVariants.Update(variant);
+                        var variantLabel = !string.IsNullOrWhiteSpace(variant.ColorName) ? $"({variant.ColorName})" : "";
+                        throw new InvalidOperationException($"Sản phẩm '{variant.Product.Name} {variantLabel}' không đủ số lượng trong kho (chỉ còn {variant.StockQuantity} sản phẩm, bạn yêu cầu {itemReq.Quantity}).");
                     }
 
-                    var unitPrice = (itemReq.CustomPrice.HasValue && itemReq.CustomPrice.Value > 0)
-                        ? itemReq.CustomPrice.Value
-                        : variant.Price;
+                    variant.StockQuantity -= itemReq.Quantity;
+                    _unitOfWork.ProductVariants.Update(variant);
+
+                    // PRICE SECURITY: Always use authoritative price from database. NEVER trust client-supplied CustomPrice.
+                    var unitPrice = variant.Price;
 
                     var itemTotal = unitPrice * itemReq.Quantity;
                     subTotal += itemTotal;
@@ -213,17 +216,8 @@ namespace Ecommerce.BLL.Services
                     await _unitOfWork.OrderItems.AddAsync(item);
                 }
 
-                // 8. Reward points for registered users
-                if (userId.HasValue)
-                {
-                    var user = await _unitOfWork.Users.GetByIdAsync(userId.Value);
-                    if (user != null)
-                    {
-                        var earnedPoints = (int)(totalAmount / 100000m); // 1 điểm cho mỗi 100k
-                        user.RewardPoints += earnedPoints;
-                        _unitOfWork.Users.Update(user);
-                    }
-                }
+                // 8. Reward points will be granted upon successful order delivery (Giao hàng thành công)
+                // in AdminService.UpdateOrderStatusAsync to prevent point-farming fraud.
 
                 await _unitOfWork.SaveChangesAsync();
                 await _unitOfWork.CommitAsync();

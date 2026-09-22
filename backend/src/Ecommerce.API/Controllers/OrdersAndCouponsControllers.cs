@@ -62,7 +62,51 @@ namespace Ecommerce.API.Controllers
                 return NotFound(ApiResponse<OrderResponseDto>.ErrorResult($"Không tìm thấy đơn hàng với mã '{orderCode}'", null, 404));
             }
 
+            int? currentUserId = null;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out var parsedId))
+            {
+                currentUserId = parsedId;
+            }
+
+            bool isAuthorizedUser = User.IsInRole("Admin") || (order.UserId.HasValue && order.UserId == currentUserId);
+
+            if (!isAuthorizedUser)
+            {
+                // Mask sensitive personal information to prevent IDOR data harvesting
+                order.ReceiverPhone = MaskPhone(order.ReceiverPhone);
+                order.ReceiverEmail = MaskEmail(order.ReceiverEmail);
+                order.ShippingAddress = MaskAddress(order.ShippingAddress);
+            }
+
             return Ok(ApiResponse<OrderResponseDto>.SuccessResult(order, "Tra cứu đơn hàng thành công"));
+        }
+
+        private static string MaskPhone(string? phone)
+        {
+            if (string.IsNullOrWhiteSpace(phone) || phone.Length < 6) return "****";
+            return phone.Substring(0, 3) + "****" + phone.Substring(phone.Length - 3);
+        }
+
+        private static string? MaskEmail(string? email)
+        {
+            if (string.IsNullOrWhiteSpace(email) || !email.Contains('@')) return null;
+            var parts = email.Split('@');
+            var name = parts[0];
+            var maskedName = name.Length <= 2 ? name[0] + "***" : name.Substring(0, 2) + "***" + name.Substring(name.Length - 1);
+            return $"{maskedName}@{parts[1]}";
+        }
+
+        private static string MaskAddress(string? address)
+        {
+            if (string.IsNullOrWhiteSpace(address)) return "";
+            var parts = address.Split(',');
+            if (parts.Length > 1)
+            {
+                return "***, " + parts[^1].Trim();
+            }
+            return address.Length > 10 ? address.Substring(0, 5) + " ***" : "***";
         }
 
         [Authorize]

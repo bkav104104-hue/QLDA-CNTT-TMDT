@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Ecommerce.BLL.Interfaces;
 using Ecommerce.Common.DTOs;
@@ -9,6 +10,7 @@ using Ecommerce.Common.DTOs.Responses;
 
 namespace Ecommerce.API.Controllers
 {
+    [Authorize(Roles = "Admin")]
     [ApiController]
     [Route("api/[controller]")]
     public class AdminController : ControllerBase
