@@ -5,7 +5,8 @@ export interface UserProfile {
   email?: string | null;
   dateOfBirth?: string | null;
   avatarUrl?: string | null;
-  role: string;
+  role?: string;
+  roleName?: string;
   memberTier: string;
   rewardPoints: number;
   isActive: boolean;

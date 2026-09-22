@@ -32,7 +32,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   onOpenAdmin 
 }) => {
   const { addToCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('dienthoai');
 
@@ -63,6 +63,11 @@ export const HomePage: React.FC<HomePageProps> = ({
   };
 
   const handleAddToCart = (product: ProductItem) => {
+    if (user?.roleName === 'Admin' || user?.role === 'Admin') {
+      showToast('⚠️ Quản trị viên không được phép đặt mua hàng trên sàn!');
+      return;
+    }
+
     const item: CartItemType = {
       id: `np-item-${Date.now()}`,
       productId: product.id,
@@ -77,10 +82,16 @@ export const HomePage: React.FC<HomePageProps> = ({
       imageBgColor: product.imageBgColor || '#e0f2fe'
     };
 
-    const added = addToCart(item, () => {
-      onOpenAuth('login', 'Vui lòng đăng nhập tài khoản NextPhone để thêm sản phẩm vào giỏ hàng!');
-      showToast('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!');
-    });
+    const added = addToCart(
+      item, 
+      () => {
+        onOpenAuth('login', 'Vui lòng đăng nhập tài khoản NextPhone để thêm sản phẩm vào giỏ hàng!');
+        showToast('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!');
+      },
+      () => {
+        showToast('⚠️ Quản trị viên không được phép đặt mua hàng trên sàn!');
+      }
+    );
 
     if (added) {
       showToast(`Đã thêm "${product.name}" vào giỏ hàng!`);

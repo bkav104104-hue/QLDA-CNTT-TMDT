@@ -19,7 +19,7 @@ interface CartContextType {
   cartItems: CartItemType[];
   totalCount: number;
   totalAmount: number;
-  addToCart: (item: CartItemType, onRequireLogin?: () => void) => boolean;
+  addToCart: (item: CartItemType, onRequireLogin?: () => void, onAdminBlocked?: () => void) => boolean;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, delta: number) => void;
   clearCart: () => void;
@@ -30,7 +30,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 const STORAGE_KEY = 'nextphone_cart_items';
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   
   const [cartItems, setCartItems] = useState<CartItemType[]>(() => {
     try {
@@ -51,13 +51,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cartItems));
   }, [cartItems]);
 
-  // If there was a pending item and the user just logged in, auto-add it to cart
+  // If there was a pending item and the user just logged in, auto-add it to cart (only if not admin)
   useEffect(() => {
     if (isAuthenticated && pendingItem) {
-      addItemToCartState(pendingItem);
+      if (user?.roleName !== 'Admin' && user?.role !== 'Admin') {
+        addItemToCartState(pendingItem);
+      }
       setPendingItem(null);
     }
-  }, [isAuthenticated, pendingItem]);
+  }, [isAuthenticated, pendingItem, user]);
 
   const addItemToCartState = (item: CartItemType) => {
     setCartItems(prev => {
@@ -83,11 +85,24 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * Add to Cart with STRICT Authentication Check:
    * Returns true if added, false if prevented due to lack of authentication.
    */
-  const addToCart = (item: CartItemType, onRequireLogin?: () => void): boolean => {
+  const addToCart = (
+    item: CartItemType,
+    onRequireLogin?: () => void,
+    onAdminBlocked?: () => void
+  ): boolean => {
     if (!isAuthenticated) {
       setPendingItem(item);
       if (onRequireLogin) {
         onRequireLogin();
+      }
+      return false;
+    }
+
+    if (user?.roleName === 'Admin' || user?.role === 'Admin') {
+      if (onAdminBlocked) {
+        onAdminBlocked();
+      } else {
+        alert('Tài khoản Quản trị viên (Admin) không được phép mua hàng trên sàn. Vui lòng sử dụng tài khoản Khách hàng!');
       }
       return false;
     }

@@ -33,6 +33,29 @@ namespace Ecommerce.BLL.Services
                 throw new ArgumentException("Đơn hàng phải có ít nhất 1 sản phẩm.");
             }
 
+            // Enforce business logic: Admin accounts are not allowed to place orders on the platform
+            if (userId.HasValue)
+            {
+                var orderingUser = await _unitOfWork.Users.Query()
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.Id == userId.Value);
+
+                if (orderingUser != null && (orderingUser.RoleId == AppConstants.Roles.AdminId || (orderingUser.Role != null && orderingUser.Role.Name == "Admin")))
+                {
+                    throw new InvalidOperationException("Tài khoản Quản trị viên (Admin) không được phép thực hiện đặt hàng trên sàn. Vui lòng sử dụng tài khoản Khách hàng.");
+                }
+            }
+
+            // Check if receiver details belong to an administrator
+            var adminReceiver = await _unitOfWork.Users.Query()
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => (u.PhoneNumber == request.ReceiverPhone || (!string.IsNullOrEmpty(request.ReceiverEmail) && u.Email == request.ReceiverEmail))
+                                          && (u.RoleId == AppConstants.Roles.AdminId || (u.Role != null && u.Role.Name == "Admin")));
+            if (adminReceiver != null)
+            {
+                throw new InvalidOperationException("Thông tin người nhận thuộc tài khoản Quản trị viên. Quản trị viên không được phép đặt mua hàng trên sàn.");
+            }
+
             await _unitOfWork.BeginTransactionAsync();
 
             try

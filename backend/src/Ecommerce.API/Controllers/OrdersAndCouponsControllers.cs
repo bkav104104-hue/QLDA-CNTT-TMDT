@@ -44,6 +44,11 @@ namespace Ecommerce.API.Controllers
                 userId = parsedId;
             }
 
+            if (User.IsInRole("Admin"))
+            {
+                return StatusCode(403, ApiResponse<OrderResponseDto>.ErrorResult("Tài khoản Quản trị viên (Admin) không được phép thực hiện đặt hàng trên sàn. Vui lòng sử dụng tài khoản Khách hàng.", null, 403));
+            }
+
             var order = await _orderService.CreateOrderAsync(request, userId);
             return Ok(ApiResponse<OrderResponseDto>.SuccessResult(order, "Đặt hàng thành công!", 201));
         }

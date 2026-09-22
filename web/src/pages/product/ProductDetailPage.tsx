@@ -108,6 +108,11 @@ export const ProductDetailPage: React.FC<ProductDetailProps> = ({
   };
 
   const handleAddToCart = () => {
+    if (user?.roleName === 'Admin' || user?.role === 'Admin') {
+      showToast('⚠️ Tài khoản Quản trị viên (Admin) không được phép mua hàng trên sàn!');
+      return;
+    }
+
     const item: CartItemType = {
       id: `np-item-${Date.now()}`,
       productId: productData.id,
@@ -122,12 +127,18 @@ export const ProductDetailPage: React.FC<ProductDetailProps> = ({
       imageBgColor: selectedColor.imageBg
     };
 
-    const added = addToCart(item, () => {
-      if (onOpenAuth) {
-        onOpenAuth('login', 'Vui lòng đăng nhập tài khoản NextPhone để thêm sản phẩm vào giỏ hàng và tích điểm Smember!');
+    const added = addToCart(
+      item, 
+      () => {
+        if (onOpenAuth) {
+          onOpenAuth('login', 'Vui lòng đăng nhập tài khoản NextPhone để thêm sản phẩm vào giỏ hàng và tích điểm Smember!');
+        }
+        showToast('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!');
+      },
+      () => {
+        showToast('⚠️ Tài khoản Quản trị viên (Admin) không được phép mua hàng trên sàn!');
       }
-      showToast('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!');
-    });
+    );
 
     if (added) {
       if (onAddToCart) {
@@ -138,6 +149,11 @@ export const ProductDetailPage: React.FC<ProductDetailProps> = ({
   };
 
   const handleBuyNow = () => {
+    if (user?.roleName === 'Admin' || user?.role === 'Admin') {
+      showToast('⚠️ Tài khoản Quản trị viên (Admin) không được phép mua hàng trên sàn!');
+      return;
+    }
+
     const item: CartItemType = {
       id: `np-item-${Date.now()}`,
       productId: productData.id,
@@ -152,12 +168,18 @@ export const ProductDetailPage: React.FC<ProductDetailProps> = ({
       imageBgColor: selectedColor.imageBg
     };
 
-    const added = addToCart(item, () => {
-      if (onOpenAuth) {
-        onOpenAuth('login', 'Vui lòng đăng nhập tài khoản NextPhone để tiến hành mua ngay!');
+    const added = addToCart(
+      item, 
+      () => {
+        if (onOpenAuth) {
+          onOpenAuth('login', 'Vui lòng đăng nhập tài khoản NextPhone để tiến hành mua ngay!');
+        }
+        showToast('Vui lòng đăng nhập để tiến hành mua ngay!');
+      },
+      () => {
+        showToast('⚠️ Tài khoản Quản trị viên (Admin) không được phép mua hàng trên sàn!');
       }
-      showToast('Vui lòng đăng nhập để tiến hành mua ngay!');
-    });
+    );
 
     if (added) {
       if (onAddToCart) {
@@ -526,6 +548,14 @@ export const ProductDetailPage: React.FC<ProductDetailProps> = ({
 
             {/* 4. Action Buttons */}
             <div className="space-y-2.5 pt-1">
+              {/* Admin Preview Notice */}
+              {(user?.roleName === 'Admin' || user?.role === 'Admin') && (
+                <div className="p-3 bg-amber-50 border border-amber-300 rounded-2xl flex items-center gap-2.5 text-amber-800 text-xs font-semibold">
+                  <span className="text-base flex-shrink-0">🛡️</span>
+                  <span>Tài khoản Quản trị viên chỉ có quyền quản lý và xem trước thông tin sản phẩm, không thể mua sắm hoặc tạo đơn đặt hàng.</span>
+                </div>
+              )}
+
               <div className="flex gap-2.5">
                 <button
                   type="button"

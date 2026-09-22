@@ -121,6 +121,11 @@ export const CartPage: React.FC<CartPageProps> = ({ onBackToHome, onOpenAuth }) 
       return;
     }
 
+    if (user?.roleName === 'Admin' || user?.role === 'Admin') {
+      alert('Tài khoản Quản trị viên (Admin) không được phép tạo đơn đặt hàng trên sàn NextPhone. Vui lòng đăng xuất và sử dụng tài khoản Khách hàng!');
+      return;
+    }
+
     const finalAmount = totalPayment;
     setSavedOrderAmount(finalAmount);
     setSavedTransactionCode(null);
@@ -150,7 +155,12 @@ export const CartPage: React.FC<CartPageProps> = ({ onBackToHome, onOpenAuth }) 
       if (orderRes.data?.data?.orderCode) {
         newOrderCode = orderRes.data.data.orderCode;
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        alert(err.response?.data?.message || 'Tài khoản Quản trị viên không thể tạo đơn đặt hàng!');
+        setIsSubmittingOrder(false);
+        return;
+      }
       console.warn('Backend order created fallback:', err);
     } finally {
       setIsSubmittingOrder(false);
@@ -235,6 +245,16 @@ export const CartPage: React.FC<CartPageProps> = ({ onBackToHome, onOpenAuth }) 
             Giỏ hàng
           </h1>
         </div>
+
+        {/* Admin Warning Banner */}
+        {(user?.roleName === 'Admin' || user?.role === 'Admin') && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-center gap-3 text-amber-900 text-sm shadow-sm">
+            <span className="text-2xl flex-shrink-0">⚠️</span>
+            <div className="leading-snug">
+              <strong className="font-bold">Tài khoản Quản trị viên (Admin):</strong> Bạn đang đăng nhập với quyền Quản trị viên của sàn NextPhone. Quản trị viên không được phép tạo đơn đặt hàng trên sàn. Vui lòng đăng xuất và đăng nhập tài khoản Khách hàng để mua sắm!
+            </div>
+          </div>
+        )}
 
         {/* Order Success Modal Simulation */}
         {orderSuccess ? (
@@ -798,10 +818,16 @@ export const CartPage: React.FC<CartPageProps> = ({ onBackToHome, onOpenAuth }) 
                 {/* Big Action Submit Button (Deep green as in image) */}
                 <button
                   type="submit"
-                  disabled={items.length === 0 || isSubmittingOrder}
-                  className="w-full py-3.5 px-4 bg-[#006e57] hover:bg-[#005944] text-white font-extrabold text-sm tracking-wider uppercase rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.99] disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled={items.length === 0 || isSubmittingOrder || (user?.roleName === 'Admin' || user?.role === 'Admin')}
+                  className={`w-full py-3.5 px-4 font-extrabold text-sm tracking-wider uppercase rounded-xl shadow-lg transition-all duration-200 active:scale-[0.99] flex items-center justify-center gap-2 ${
+                    (user?.roleName === 'Admin' || user?.role === 'Admin')
+                      ? 'bg-amber-600 text-white cursor-not-allowed opacity-90'
+                      : 'bg-[#006e57] hover:bg-[#005944] text-white hover:shadow-xl disabled:bg-gray-300 disabled:cursor-not-allowed'
+                  }`}
                 >
-                  {isSubmittingOrder ? (
+                  {(user?.roleName === 'Admin' || user?.role === 'Admin') ? (
+                    <span>🛡️ QUẢN TRỊ VIÊN KHÔNG THỂ ĐẶT HÀNG</span>
+                  ) : isSubmittingOrder ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>ĐANG XỬ LÝ...</span>

@@ -27,7 +27,7 @@ export interface AiConfig {
 }
 
 // Default Gemini API key from environment or user settings
-export const DEFAULT_GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+export const DEFAULT_GEMINI_API_KEY = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
 export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 
 const STORAGE_KEY_API_KEY = 'nextphone_gemini_api_key';
