@@ -1,12 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { ProductCard, ProductItem } from './ProductCard';
-import { Flame, Cable, Laptop, Tablet, Sparkles, RotateCcw, Monitor, Headphones } from 'lucide-react';
+import { Flame, Cable, Laptop, Tablet, Sparkles, RotateCcw, Monitor, Headphones, Search, X } from 'lucide-react';
+import { normalizeSearchText } from '../../data/catalogProducts';
 
 interface ProductSectionProps {
   onAddToCart?: (product: ProductItem) => void;
   onSelectProduct?: (product: ProductItem) => void;
   selectedCategory?: string;
   onResetCategory?: () => void;
+  searchQuery?: string;
+  onClearSearch?: () => void;
 }
 
 interface ExtendedProductItem extends ProductItem {
@@ -18,7 +21,9 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
   onAddToCart, 
   onSelectProduct,
   selectedCategory = 'dienthoai',
-  onResetCategory
+  onResetCategory,
+  searchQuery,
+  onClearSearch
 }) => {
   const [activeBrand, setActiveBrand] = useState('all');
 
@@ -373,15 +378,37 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
     }
   }, [normalizedCategory, selectedCategory]);
 
-  const displayedProducts = useMemo(() => {
-    let list = allProducts.filter(p => {
-      const pCat = p.category.toLowerCase().replace('-', '');
-      return categoryMeta.filterCategories.some(c => pCat.includes(c));
-    });
+  const normalizedQuery = useMemo(() => {
+    return searchQuery ? normalizeSearchText(searchQuery) : '';
+  }, [searchQuery]);
 
-    // Fallback if category has no specific item: show general phone products
-    if (list.length === 0) {
-      list = allProducts.filter(p => p.category === 'dienthoai');
+  const displayedProducts = useMemo(() => {
+    let list: ExtendedProductItem[] = [];
+
+    if (normalizedQuery) {
+      // Search across all products
+      list = allProducts.filter(p => {
+        const nameNorm = normalizeSearchText(p.name);
+        const brandNorm = normalizeSearchText(p.brand);
+        const catNorm = normalizeSearchText(p.category);
+        const chipNorm = normalizeSearchText(p.chipset || '');
+        const storageNorm = normalizeSearchText(p.storage || '');
+        return nameNorm.includes(normalizedQuery) ||
+               brandNorm.includes(normalizedQuery) ||
+               catNorm.includes(normalizedQuery) ||
+               chipNorm.includes(normalizedQuery) ||
+               storageNorm.includes(normalizedQuery);
+      });
+    } else {
+      list = allProducts.filter(p => {
+        const pCat = p.category.toLowerCase().replace('-', '');
+        return categoryMeta.filterCategories.some(c => pCat.includes(c));
+      });
+
+      // Fallback if category has no specific item: show general phone products
+      if (list.length === 0) {
+        list = allProducts.filter(p => p.category === 'dienthoai');
+      }
     }
 
     if (activeBrand !== 'all') {
@@ -389,7 +416,7 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
     }
 
     return list;
-  }, [allProducts, categoryMeta, activeBrand]);
+  }, [allProducts, categoryMeta, activeBrand, normalizedQuery]);
 
   const brands = [
     { id: 'all', label: 'Tất cả' },
@@ -403,25 +430,59 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
 
   return (
     <div id="home-main-section" className="w-full space-y-4">
-      {/* Section Header with Category Title & Brand Filter Tabs */}
+      {/* Search Result Banner if search is active */}
+      {searchQuery && (
+        <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#009981] text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+              <Search className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-gray-900">
+                  Kết quả tìm kiếm cho: <span className="text-[#009981]">"{searchQuery}"</span>
+                </h3>
+                <span className="bg-emerald-100 text-[#009981] text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                  {displayedProducts.length} sản phẩm
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-0.5">
+                Hiển thị các sản phẩm trùng khớp với từ khóa của bạn
+              </p>
+            </div>
+          </div>
+          {onClearSearch && (
+            <button
+              type="button"
+              onClick={onClearSearch}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 hover:border-red-300 hover:text-red-600 rounded-xl text-xs font-semibold text-gray-700 transition-colors shadow-xs self-start sm:self-auto cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Xóa bộ lọc tìm kiếm</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Section Header with Category Title & Brand Filter Tabs (only if not searching, or show brand tabs along with results) */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center flex-shrink-0">
-            {categoryMeta.icon}
+            {searchQuery ? <Search className="w-4 h-4 text-[#009981]" /> : categoryMeta.icon}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base md:text-lg font-black text-gray-900 uppercase tracking-tight">
-                {categoryMeta.title}
+                {searchQuery ? `LỌC THEO THƯƠNG HIỆU` : categoryMeta.title}
               </h2>
-              {selectedCategory && selectedCategory !== 'dienthoai' && (
+              {!searchQuery && selectedCategory && selectedCategory !== 'dienthoai' && (
                 <span className="bg-emerald-100 text-[#009981] font-extrabold text-[10px] px-2 py-0.5 rounded-full uppercase">
                   #{selectedCategory}
                 </span>
               )}
             </div>
             <p className="text-[11px] text-gray-500 font-medium">
-              {categoryMeta.subtitle}
+              {searchQuery ? 'Chọn thương hiệu để thu hẹp kết quả tìm kiếm' : categoryMeta.subtitle}
             </p>
           </div>
         </div>
@@ -445,17 +506,44 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
         </div>
       </div>
 
-      {/* Products Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5">
-        {displayedProducts.map((prod) => (
-          <ProductCard
-            key={prod.id}
-            product={prod}
-            onAddToCart={onAddToCart}
-            onSelectProduct={onSelectProduct}
-          />
-        ))}
-      </div>
+      {/* Products Grid or Empty State */}
+      {displayedProducts.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5">
+          {displayedProducts.map((prod) => (
+            <ProductCard
+              key={prod.id}
+              product={prod}
+              onAddToCart={onAddToCart}
+              onSelectProduct={onSelectProduct}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl p-10 border border-gray-200 text-center space-y-3.5 shadow-sm">
+          <div className="w-16 h-16 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center mx-auto border border-gray-100">
+            <Search className="w-8 h-8 text-gray-400" />
+          </div>
+          <div>
+            <h4 className="text-base font-bold text-gray-900">
+              Không tìm thấy sản phẩm nào phù hợp
+            </h4>
+            <p className="text-xs text-gray-500 max-w-md mx-auto mt-1">
+              Không có kết quả nào cho từ khóa {searchQuery ? `"${searchQuery}"` : 'hiện tại'}. Vui lòng thử từ khóa khác như <span className="font-semibold text-gray-700">iPhone, Samsung, sạc GaN, laptop Asus...</span>
+            </p>
+          </div>
+          {onClearSearch && (
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={onClearSearch}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#009981] hover:bg-[#00826e] text-white rounded-xl text-xs font-bold transition-colors shadow-sm cursor-pointer"
+              >
+                <span>Xem lại tất cả sản phẩm</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

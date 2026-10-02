@@ -45,10 +45,11 @@ function MainLayout() {
     setIsUserProfileOpen(true);
   };
 
-  // Sync hash routing so selecting #cat-... from anywhere returns to home
+  // Sync hash routing so selecting #cat-... or #search-... from anywhere returns to home
   React.useEffect(() => {
     const handleHash = () => {
-      if (window.location.hash && window.location.hash.startsWith('#cat-')) {
+      const hash = window.location.hash;
+      if (hash && (hash.startsWith('#cat-') || hash.startsWith('#search-'))) {
         setCurrentPage('home');
         localStorage.setItem('nextphone_current_page', 'home');
       }

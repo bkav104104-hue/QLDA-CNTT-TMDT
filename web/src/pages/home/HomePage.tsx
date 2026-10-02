@@ -35,8 +35,9 @@ export const HomePage: React.FC<HomePageProps> = ({
   const { isAuthenticated, user } = useAuth();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('dienthoai');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Listen to browser hash changes (e.g. #cat-dienthoai, #cat-phukien, #cat-tinhotcongnghe)
+  // Listen to browser hash changes (e.g. #cat-dienthoai, #cat-phukien, #search-iphone)
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
@@ -44,9 +45,14 @@ export const HomePage: React.FC<HomePageProps> = ({
         const slug = hash.replace('#cat-', '');
         if (slug) {
           setActiveCategory(slug);
+          setSearchQuery('');
         }
+      } else if (hash && hash.startsWith('#search-')) {
+        const query = decodeURIComponent(hash.replace('#search-', ''));
+        setSearchQuery(query);
       } else if (!hash || hash === '#') {
         setActiveCategory('dienthoai');
+        setSearchQuery('');
       }
     };
 
@@ -98,12 +104,36 @@ export const HomePage: React.FC<HomePageProps> = ({
     }
   };
 
+  const handleSearch = (query: string) => {
+    const trimmed = query.trim();
+    setSearchQuery(trimmed);
+    if (trimmed) {
+      window.location.hash = '#search-' + encodeURIComponent(trimmed);
+    } else {
+      if (window.location.hash.startsWith('#search-')) {
+        window.history.pushState(null, '', window.location.pathname);
+      }
+    }
+    const el = document.getElementById('home-main-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    if (window.location.hash.startsWith('#search-')) {
+      window.history.pushState(null, '', window.location.pathname);
+    }
+  };
+
   const handleLogoClick = () => {
     // Clean URL: remove any hash e.g. #cat-dienthoai and restore clean root path /
     if (window.location.hash) {
       window.history.pushState(null, '', window.location.pathname);
     }
     setActiveCategory('dienthoai');
+    setSearchQuery('');
     if (onGoToHome) {
       onGoToHome();
     }
@@ -112,6 +142,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   const handleCategorySelect = (slug: string) => {
     setActiveCategory(slug);
+    setSearchQuery('');
   };
 
   return (
@@ -134,8 +165,11 @@ export const HomePage: React.FC<HomePageProps> = ({
           onOpenPaymentHistory={onOpenPaymentHistory}
           onOpenUserProfile={onOpenUserProfile}
           onOpenAdmin={onOpenAdmin}
+          onSearch={handleSearch}
+          onSelectProduct={onSelectProduct}
+          currentSearchTerm={searchQuery}
         />
-        <TrendingKeywords />
+        <TrendingKeywords onSelectKeyword={handleSearch} />
 
         {/* 2. Main Body Grid */}
         <main className="max-w-7xl mx-auto px-4 py-4 md:py-6">
@@ -163,10 +197,13 @@ export const HomePage: React.FC<HomePageProps> = ({
               ) : (
                 <ProductSection 
                   selectedCategory={activeCategory}
+                  searchQuery={searchQuery}
+                  onClearSearch={handleClearSearch}
                   onAddToCart={handleAddToCart} 
                   onSelectProduct={onSelectProduct}
                   onResetCategory={() => {
                     setActiveCategory('dienthoai');
+                    setSearchQuery('');
                     window.history.pushState(null, '', window.location.pathname);
                   }}
                 />

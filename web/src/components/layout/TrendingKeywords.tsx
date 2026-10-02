@@ -1,6 +1,10 @@
 import React from 'react';
 
-export const TrendingKeywords: React.FC = () => {
+interface TrendingKeywordsProps {
+  onSelectKeyword?: (keyword: string) => void;
+}
+
+export const TrendingKeywords: React.FC<TrendingKeywordsProps> = ({ onSelectKeyword }) => {
   const keywords = [
     'Redmi Note 14',
     'Galaxy Z Flip8',
@@ -12,6 +16,13 @@ export const TrendingKeywords: React.FC = () => {
     'Củ sạc GaN 65W'
   ];
 
+  const handleClick = (e: React.MouseEvent, kw: string) => {
+    if (onSelectKeyword) {
+      e.preventDefault();
+      onSelectKeyword(kw);
+    }
+  };
+
   return (
     <div className="w-full bg-white border-b border-gray-100 py-1.5 px-4 hidden sm:block">
       <div className="max-w-7xl mx-auto flex items-center gap-3 overflow-x-auto no-scrollbar text-xs">
@@ -22,8 +33,9 @@ export const TrendingKeywords: React.FC = () => {
           {keywords.map((kw, i) => (
             <a
               key={i}
-              href={`#search-${kw}`}
-              className="text-gray-600 hover:text-[#009981] hover:bg-emerald-50 px-2 py-0.5 rounded transition-colors whitespace-nowrap"
+              href={`#search-${encodeURIComponent(kw)}`}
+              onClick={(e) => handleClick(e, kw)}
+              className="text-gray-600 hover:text-[#009981] hover:bg-emerald-50 px-2 py-0.5 rounded transition-colors whitespace-nowrap cursor-pointer"
             >
               {kw}
             </a>

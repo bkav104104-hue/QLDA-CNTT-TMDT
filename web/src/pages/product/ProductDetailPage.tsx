@@ -227,8 +227,22 @@ export const ProductDetailPage: React.FC<ProductDetailProps> = ({
         onOpenAdmin={onOpenAdmin}
         onOpenPaymentHistory={onOpenPaymentHistory}
         onOpenUserProfile={onOpenUserProfile}
+        onSearch={(query) => {
+          window.location.hash = '#search-' + encodeURIComponent(query);
+          onBackToHome();
+        }}
+        onSelectProduct={(p) => {
+          if (onSelectOtherProduct) {
+            onSelectOtherProduct(p.id || p.slug);
+          }
+        }}
       />
-      <TrendingKeywords />
+      <TrendingKeywords 
+        onSelectKeyword={(kw) => {
+          window.location.hash = '#search-' + encodeURIComponent(kw);
+          onBackToHome();
+        }} 
+      />
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 py-4 space-y-6 flex-1 w-full">

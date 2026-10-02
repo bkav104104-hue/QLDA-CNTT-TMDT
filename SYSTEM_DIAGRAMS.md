@@ -909,3 +909,4 @@ classDiagram
   3. Cơ chế tự động hoàn trả tồn kho và ghi nhật ký kiểm kê khi hủy đơn hàng.
   4. Hai cổng thanh toán trực tuyến VietQR (NAPAS 24/7) và Thẻ tín dụng quốc tế (OTP 3D-Secure).
   5. Cơ chế che giấu dữ liệu cá nhân (Data Masking) chống tấn công IDOR khi tra cứu đơn hàng công khai.
+
