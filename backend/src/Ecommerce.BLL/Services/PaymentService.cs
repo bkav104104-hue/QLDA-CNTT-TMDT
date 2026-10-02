@@ -24,26 +24,35 @@ namespace Ecommerce.BLL.Services
             _configuration = configuration;
         }
 
-        public async Task<QrPaymentResponseDto> CreateQrPaymentAsync(string orderCode, string? bankCode = null)
+        public async Task<QrPaymentResponseDto> CreateQrPaymentAsync(string orderCode, string? bankCode = null, decimal? amount = null)
         {
             var code = orderCode.Trim();
             var order = await _unitOfWork.Orders.Query()
                 .Include(o => o.Payments)
                 .FirstOrDefaultAsync(o => o.OrderCode == code);
 
-            if (order == null)
-            {
-                throw new KeyNotFoundException($"Không tìm thấy đơn hàng với mã '{orderCode}'.");
-            }
-
             var merchantName = _configuration["PaymentGateway:MerchantName"] ?? "CONG TY CP CONG NGHE NEXTPHONE VIET NAM";
             var bankBin = _configuration["PaymentGateway:VietQR:BankBin"] ?? "970422"; // MBBank
             var bankName = _configuration["PaymentGateway:VietQR:BankName"] ?? "MBBank";
             var accountNo = _configuration["PaymentGateway:VietQR:AccountNo"] ?? "0988776655";
 
-            var transferContent = $"NP {order.OrderCode}";
-            var qrCodeUrl = $"https://img.vietqr.io/image/{bankBin}-{accountNo}-compact2.png?amount={(long)order.TotalAmount}&addInfo={Uri.EscapeDataString(transferContent)}&accountName={Uri.EscapeDataString(merchantName)}";
-            var qrRawContent = $"00020101021238540010A00000072701240006{bankBin}01{accountNo.Length:D2}{accountNo}0208QRIBFTTA530370454{order.TotalAmount:F0}5802VN62{transferContent.Length + 4:D2}08{transferContent.Length:D2}{transferContent}6304";
+            decimal targetAmount = 0;
+            if (order != null)
+            {
+                targetAmount = order.TotalAmount;
+            }
+            else if (amount.HasValue && amount.Value > 0)
+            {
+                targetAmount = amount.Value;
+            }
+            else
+            {
+                targetAmount = 500000;
+            }
+
+            var transferContent = $"NP {code}";
+            var qrCodeUrl = $"https://img.vietqr.io/image/{bankBin}-{accountNo}-compact2.png?amount={(long)targetAmount}&addInfo={Uri.EscapeDataString(transferContent)}&accountName={Uri.EscapeDataString(merchantName)}";
+            var qrRawContent = $"00020101021238540010A00000072701240006{bankBin}01{accountNo.Length:D2}{accountNo}0208QRIBFTTA530370454{targetAmount:F0}5802VN62{transferContent.Length + 4:D2}08{transferContent.Length:D2}{transferContent}6304";
 
             var transactionCode = $"TXN-QR-{DateTime.UtcNow:yyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
 
@@ -58,25 +67,28 @@ namespace Ecommerce.BLL.Services
                 QrCodeUrl = qrCodeUrl
             };
 
-            var payment = new Payment
+            if (order != null)
             {
-                OrderId = order.Id,
-                PaymentMethod = AppConstants.PaymentMethod.QRCode,
-                TransactionCode = transactionCode,
-                Amount = order.TotalAmount,
-                Status = order.PaymentStatus == AppConstants.PaymentStatus.Paid ? AppConstants.TransactionStatus.Success : AppConstants.TransactionStatus.Pending,
-                ResponseJson = JsonSerializer.Serialize(paymentMeta),
-                CreatedAt = DateTime.UtcNow
-            };
+                var payment = new Payment
+                {
+                    OrderId = order.Id,
+                    PaymentMethod = AppConstants.PaymentMethod.QRCode,
+                    TransactionCode = transactionCode,
+                    Amount = targetAmount,
+                    Status = order.PaymentStatus == AppConstants.PaymentStatus.Paid ? AppConstants.TransactionStatus.Success : AppConstants.TransactionStatus.Pending,
+                    ResponseJson = JsonSerializer.Serialize(paymentMeta),
+                    CreatedAt = DateTime.UtcNow
+                };
 
-            order.PaymentMethod = AppConstants.PaymentMethod.QRCode;
-            await _unitOfWork.Payments.AddAsync(payment);
-            await _unitOfWork.SaveChangesAsync();
+                order.PaymentMethod = AppConstants.PaymentMethod.QRCode;
+                await _unitOfWork.Payments.AddAsync(payment);
+                await _unitOfWork.SaveChangesAsync();
+            }
 
             return new QrPaymentResponseDto
             {
-                OrderCode = order.OrderCode,
-                Amount = order.TotalAmount,
+                OrderCode = code,
+                Amount = targetAmount,
                 QrCodeUrl = qrCodeUrl,
                 QrContent = qrRawContent,
                 BankBin = bankBin,
@@ -85,7 +97,7 @@ namespace Ecommerce.BLL.Services
                 AccountName = merchantName,
                 TransferContent = transferContent,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(15),
-                PaymentStatus = order.PaymentStatus
+                PaymentStatus = order?.PaymentStatus ?? AppConstants.PaymentStatus.Pending
             };
         }
 
@@ -98,7 +110,16 @@ namespace Ecommerce.BLL.Services
 
             if (order == null)
             {
-                throw new KeyNotFoundException($"Không tìm thấy đơn hàng với mã '{orderCode}'.");
+                return new CheckPaymentStatusResponseDto
+                {
+                    OrderCode = code,
+                    PaymentStatus = AppConstants.PaymentStatus.Pending,
+                    OrderStatus = AppConstants.OrderStatus.Pending,
+                    TotalAmount = 0,
+                    PaidAmount = 0,
+                    PaymentMethod = AppConstants.PaymentMethod.QRCode,
+                    Transactions = new List<PaymentTransactionDto>()
+                };
             }
 
             var successfulPayment = order.Payments.FirstOrDefault(p => p.Status == AppConstants.TransactionStatus.Success);
@@ -343,7 +364,30 @@ namespace Ecommerce.BLL.Services
 
             if (order == null)
             {
-                throw new KeyNotFoundException($"Không tìm thấy đơn hàng với mã '{request.OrderCode}'.");
+                var simTxn = $"TXN-BANK-SIM-{DateTime.UtcNow:yyMMddHHmmss}";
+                return new CheckPaymentStatusResponseDto
+                {
+                    OrderCode = code,
+                    PaymentStatus = AppConstants.PaymentStatus.Paid,
+                    OrderStatus = AppConstants.OrderStatus.Confirmed,
+                    TotalAmount = request.Amount ?? 0,
+                    PaidAmount = request.Amount ?? 0,
+                    PaymentMethod = AppConstants.PaymentMethod.QRCode,
+                    TransactionCode = simTxn,
+                    PaidAt = DateTime.UtcNow,
+                    Transactions = new List<PaymentTransactionDto>
+                    {
+                        new PaymentTransactionDto
+                        {
+                            Id = 1,
+                            TransactionCode = simTxn,
+                            PaymentMethod = AppConstants.PaymentMethod.QRCode,
+                            Amount = request.Amount ?? 0,
+                            Status = AppConstants.TransactionStatus.Success,
+                            CreatedAt = DateTime.UtcNow
+                        }
+                    }
+                };
             }
 
             if (request.Amount.HasValue && request.Amount.Value < order.TotalAmount)

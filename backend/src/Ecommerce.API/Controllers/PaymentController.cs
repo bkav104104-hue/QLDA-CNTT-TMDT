@@ -41,7 +41,7 @@ namespace Ecommerce.API.Controllers
                 return BadRequest(ApiResponse<QrPaymentResponseDto>.ErrorResult("Thông tin yêu cầu không hợp lệ", valResult.Errors.ConvertAll(e => e.ErrorMessage)));
             }
 
-            var response = await _paymentService.CreateQrPaymentAsync(request.OrderCode, request.BankCode);
+            var response = await _paymentService.CreateQrPaymentAsync(request.OrderCode, request.BankCode, request.Amount);
             return Ok(ApiResponse<QrPaymentResponseDto>.SuccessResult(response, "Khởi tạo mã VietQR thành công!"));
         }
 

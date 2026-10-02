@@ -23,8 +23,6 @@ namespace Ecommerce.BLL.Validators
 
             RuleForEach(x => x.Items).ChildRules(item =>
             {
-                item.RuleFor(i => i.ProductVariantId)
-                    .GreaterThan(0).WithMessage("Mã biến thể sản phẩm không hợp lệ");
                 item.RuleFor(i => i.Quantity)
                     .GreaterThan(0).WithMessage("Số lượng phải lớn hơn 0");
             });

@@ -144,13 +144,21 @@ export const CartPage: React.FC<CartPageProps> = ({ onBackToHome, onOpenAuth }) 
         couponCode: couponApplied ? couponCode.trim() : undefined,
         transferData,
         vatInvoice,
-        items: items.map(item => ({
-          productVariantId: Number(item.productId) || 1,
-          quantity: item.quantity,
-          customPrice: item.price,
-          productName: item.name,
-          variantSummary: `${item.version || ''} ${item.colorName ? `- ${item.colorName}` : ''}`.trim()
-        }))
+        items: items.map(item => {
+          let variantId = 0;
+          if (typeof item.productId === 'number') {
+            variantId = item.productId;
+          } else if (typeof item.productId === 'string' && /^\d+$/.test(item.productId)) {
+            variantId = parseInt(item.productId, 10);
+          }
+          return {
+            productVariantId: variantId,
+            quantity: item.quantity,
+            customPrice: item.price,
+            productName: item.name,
+            variantSummary: `${item.version || ''} ${item.colorName ? `- ${item.colorName}` : ''}`.trim()
+          };
+        })
       });
       if (orderRes.data?.data?.orderCode) {
         newOrderCode = orderRes.data.data.orderCode;

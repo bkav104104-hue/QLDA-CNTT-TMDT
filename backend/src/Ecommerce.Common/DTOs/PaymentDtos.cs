@@ -8,6 +8,7 @@ namespace Ecommerce.Common.DTOs
     {
         public string OrderCode { get; set; } = string.Empty;
         public string? BankCode { get; set; }
+        public decimal? Amount { get; set; }
     }
 
     public class QrPaymentResponseDto

@@ -8,7 +8,7 @@ namespace Ecommerce.BLL.Interfaces
         /// <summary>
         /// Tạo mã QR động chuẩn VietQR cho đơn hàng
         /// </summary>
-        Task<QrPaymentResponseDto> CreateQrPaymentAsync(string orderCode, string? bankCode = null);
+        Task<QrPaymentResponseDto> CreateQrPaymentAsync(string orderCode, string? bankCode = null, decimal? amount = null);
 
         /// <summary>
         /// Kiểm tra trạng thái thanh toán hiện tại của đơn hàng (dùng cho client polling)

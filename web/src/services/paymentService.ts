@@ -73,8 +73,8 @@ export interface PaymentHistoryItem {
 
 export const paymentService = {
   // 1. Generate VietQR
-  async createQrPayment(orderCode: string, bankCode?: string): Promise<QrPaymentResponse> {
-    const res = await apiClient.post('/payment/qr/create', { orderCode, bankCode });
+  async createQrPayment(orderCode: string, bankCode?: string, amount?: number): Promise<QrPaymentResponse> {
+    const res = await apiClient.post('/payment/qr/create', { orderCode, bankCode, amount });
     return res.data.data;
   },
 
